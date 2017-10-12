@@ -1,0 +1,156 @@
+<html>
+<head>
+<title>Sketchy</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/0.5.14/p5.min.js"></script>
+<style>
+html, body {
+  height: 100%;
+}
+* {
+    font-family: sans-serif;
+    user-select: none;
+}
+canvas {
+    border: 1px solid black;
+    float: left;
+}
+body, #two-up {
+  margin: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+#info {
+    position: absolute;
+    top: 0;
+    left: 0;
+    margin: 0;
+    padding: 0;
+}
+#similar-images {
+    width: 256px;
+    height: 256px;
+    margin-left: 0.5em;
+    background-color: black;
+    float: left;
+}
+#similar-images > img {
+    width: 83px;
+    border: 1px solid black;
+}
+p {
+    margin: 1em;
+    user-select: text;
+}
+input {
+    margin-left: 1em;
+}
+</style>
+</head>
+<body>
+<script>
+var canvas;
+var backing;
+
+function setup() {
+    canvas = createCanvas(256, 256);
+    canvas.parent('canvas-parent');
+    backing = createGraphics(256, 256);
+    backing.pixelDensity(1);
+    background(255);
+}
+
+function draw() {
+    if(keyIsPressed && key == ' ') {
+        stroke(255);
+        strokeWeight(25);
+    } else {
+        stroke(0);
+        strokeWeight(3);
+    }
+    if(mouseIsPressed) {
+        drawStroke();
+    }
+}
+
+function keyPressed(event) {
+    if(event.key == 'Backspace') {
+        background(255);
+    }
+    if(event.key == 'Enter') {
+        upload();
+    }
+}
+
+function mouseReleased() {
+    upload();
+}
+function touchEnded() {
+    upload();
+}
+
+function drawStroke() {
+    line(pmouseX, pmouseY, mouseX, mouseY);
+}
+
+function canvasToBase64(cnv, imageType, cb) {
+    cnv.toBlob(function (blob) {
+        var reader = new window.FileReader();
+        reader.readAsDataURL(blob);
+        reader.onloadend = function () {
+            var base64data = reader.result.split(',')[1];
+            cb(base64data);
+        }
+    }, imageType);
+}
+
+function upload() {
+    backing.copy(canvas,
+        0, 0, canvas.width, canvas.height,
+        0, 0, backing.width, backing.height);
+    canvasToBase64(backing.elt, 'image/png', function (data) {
+        var req = new XMLHttpRequest();
+        var dataset = document.querySelector('input[name="dataset"]:checked').value;
+        req.open('POST', 'https://gpux.iyoiyo.studio/sketchy/upload/' + dataset, true);
+        req.onload = function (event) {
+            similar = JSON.parse(req.response);
+            var html = '';
+            for(var i = 0; i < similar.length && i < 9; i++) {
+                html += '<img src="sketchy/download/' + dataset + '/' + similar[i] + '"/>';
+            }
+            document.getElementById('similar-images').innerHTML = html;
+        };
+        // console.log('Uploading ' + data.length + ' bytes');
+        req.send(data);
+    });
+}
+</script>
+<div id="two-up">
+    <div id="canvas-parent"></div>
+    <div id="similar-images"></div>
+</div>
+<div id="info">
+    <p>Backspace to clear.</p>
+    <p>Drag to draw.</p>
+    <p>Drag with space bar to erase.</p>
+    <div>
+<script>
+var datasets = [
+    {
+        label: 'Sketchy photos',
+        dir: 'sketchy-photos'
+    }
+];
+for(var i = 0; i < datasets.length; i++) {
+    var label = datasets[i].label;
+    var dir = datasets[i].dir;
+    var html = '';
+    html += '<input type="radio" id="dataset' + i + '" name="dataset" value="' + dir + '" checked>';
+    html += '<label for="dataset' + i + '">' + label + '</label>';
+    document.write(html);
+}
+</script>
+    </div>
+</div>
+</body>
+</html>
